@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_firebase_auth/create_account_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'home_screen.dart';
+import 'create_account_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -9,71 +11,93 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  void _login() {
-    final email = _emailController.text;
-    final password = _passwordController.text;
-    // Add your login logic here
-    print('Email: $email, Password: $password');
+  void _showSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showSnackbar('กรุณากรอกอีเมลและรหัสผ่าน');
+      return;
+    }
+
+    try {
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => HomeScreen()));
+    } on FirebaseAuthException catch (e) {
+      _showSnackbar('เข้าสู่ระบบล้มเหลว: ${e.message}');
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      _showSnackbar('กรุณากรอกอีเมลเพื่อรับลิงก์รีเซ็ตรหัสผ่าน');
+      return;
+    }
+
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      _showSnackbar('ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว');
+    } catch (e) {
+      _showSnackbar('เกิดข้อผิดพลาด: ${e.toString()}');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login'),
-      ),
+      appBar: AppBar(title: Text('Login')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-              ),
+              decoration: InputDecoration(
+                  labelText: 'Email', border: OutlineInputBorder()),
               keyboardType: TextInputType.emailAddress,
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
-              ),
+              decoration: InputDecoration(
+                  labelText: 'Password', border: OutlineInputBorder()),
               obscureText: true,
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _login,
-              child: const Text('Login'),
-            ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
+            ElevatedButton(onPressed: _login, child: Text('Login')),
+            TextButton(
+                onPressed: _forgotPassword, child: Text('Forgot Password?')),
+            SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'Don\'t have an account? ',
-                ),
+                Text('Don\'t have an account? '),
                 GestureDetector(
                   onTap: () {
-                    // Navigate to the create account screen
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) {
-                      return CreateAccountScreen();
-                    }));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => CreateAccountScreen()));
                   },
-                  child: const Text(
+                  child: Text(
                     'Create Account',
                     style: TextStyle(
-                      color: Colors.blue,
-                      decoration: TextDecoration.underline,
-                    ),
+                        color: Colors.blue,
+                        decoration: TextDecoration.underline),
                   ),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
